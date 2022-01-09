@@ -13,7 +13,11 @@ import CoreLocation
 class AppDelegate: UIResponder, UIApplicationDelegate {
     
     var fencer: Geofencer?
-
+    var window: UIWindow?
+    var navigationController: UINavigationController?
+    let dataSource = GeoDataSource()
+    
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         fencer = Geofencer()
@@ -21,24 +25,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             try fencer?.start()
         } catch GeofencerError.monitoringNotAvailable {
             print("Device does not support monitoring")
+            return false
         } catch {
             print("Some other error occurred")
+            return false
+        }
+        let buildings = persistentContainer.viewContext
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Building")
+        do {
+            let fences = try buildings.fetch(request)
+            let vc = ViewController(fences: fences)
+            vc.delegate = self
+            window = UIWindow(frame: UIScreen.main.bounds)
+            window?.rootViewController = vc
+            window?.makeKeyAndVisible()
+
+        } catch {
+            print("Failed to get saved locations")
+            return false
         }
         return true
-    }
-
-    // MARK: UISceneSession Lifecycle
-
-    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        // Called when a new scene session is being created.
-        // Use this method to select a configuration to create the new scene with.
-        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
-    }
-
-    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
-        // Called when the user discards a scene session.
-        // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
-        // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
     }
 
     // MARK: - Core Data stack
@@ -88,3 +94,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
+extension AppDelegate: ViewControllerDelegate {
+    func saveAddress(_ address: String) -> NSManagedObject? {
+        let context = persistentContainer.viewContext
+        guard let entity = NSEntityDescription.entity(forEntityName: "Building", in: context) else {
+            return nil
+        }
+        GeoDataSource.circleRegionFrom(address: address) { [weak self] circle in
+            guard let circle = circle else {
+                print("failed to get circle region")
+                return
+            }
+            self?.fencer?.addRegion(region: circle)
+        }
+        let building = NSManagedObject(entity: entity, insertInto: context)
+        building.setValue(address, forKey: "address")
+        do {
+            try context.save()
+            return building
+        } catch {
+            print("Failed to save context")
+            return nil
+        }
+    }
+}

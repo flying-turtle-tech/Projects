@@ -33,7 +33,9 @@ class Geofencer: NSObject {
         }
     }
     
-    func addRegion(region: CLRegion) {
+    func addRegion(region: CLCircularRegion) {
+        region.notifyOnEntry = true
+        region.notifyOnExit = true
         manager.startMonitoring(for: region)
     }
     

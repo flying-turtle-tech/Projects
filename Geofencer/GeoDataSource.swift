@@ -9,7 +9,6 @@ import Foundation
 import CoreLocation
 
 class GeoDataSource {
-    
     static func circleRegionFrom(address: String, completion: @escaping (CLCircularRegion?) -> Void) {
          CLGeocoder().geocodeAddressString(address) { (placemarks, error) in
             if let err = error {

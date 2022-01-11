@@ -12,7 +12,6 @@ protocol GeofencerProtocol: NSObject {
     func addRegion(region: CLRegion)
     func removeRegion(region: CLRegion)
     var manager: CLLocationManager { get set }
-    
 }
 
 enum GeofencerError: Error {
@@ -21,7 +20,9 @@ enum GeofencerError: Error {
 
 class Geofencer: NSObject {
     lazy var manager = CLLocationManager()
-    weak var networkManager: NetworkManager?
+    weak var networkManager: NetworkManagerProtocol?
+    
+    init(networkManager: NetworkManagerProtocol = JSONManager.shared) {}
     
     func start() throws {
         if !CLLocationManager.isMonitoringAvailable(for: CLRegion.self) {
@@ -50,13 +51,21 @@ extension Geofencer: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        networkManager?.makeRequest()
         print("Entered region! \(region)")
+        guard let router = Router.entered(region.identifier) else {
+            print("Failed to create entered region router")
+            return
+        }
+        networkManager?.makeRequest(router)
     }
     
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        networkManager?.makeRequest()
         print("Exited region! \(region)")
+        guard let router = Router.exited(region.identifier) else {
+            print("Failed to create exited region router")
+            return
+        }
+        networkManager?.makeRequest(router)
     }
     
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {

@@ -95,18 +95,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate: ViewControllerDelegate {
-    func saveAddress(_ address: String) -> NSManagedObject? {
+    func saveBuilding(_ address: String, region: CLCircularRegion) -> NSManagedObject? {
         let context = persistentContainer.viewContext
-        guard let entity = NSEntityDescription.entity(forEntityName: "Building", in: context) else {
+        guard let entity = NSEntityDescription.entity(forEntityName: "Building", in: context),
+            let fencer = fencer else {
             return nil
         }
-        GeoDataSource.circleRegionFrom(address: address) { [weak self] circle in
-            guard let circle = circle else {
-                print("failed to get circle region")
-                return
-            }
-            self?.fencer?.addRegion(region: circle)
-        }
+        fencer.addRegion(region: region)
         let building = NSManagedObject(entity: entity, insertInto: context)
         building.setValue(address, forKey: "address")
         do {
